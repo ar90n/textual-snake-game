@@ -9,10 +9,10 @@ input integration with game logic.
 import unittest
 from unittest.mock import MagicMock, patch
 
-from src.snake_game.snake_game import SnakeGame
-from src.snake_game.core.game_engine import GameEngine
-from src.snake_game.core.models import DIRECTIONS, Snake, Food, GameState
-from src.snake_game.ui.ui_components import GameScreen, GameBoard, ScoreDisplay
+from textual_snake_game.snake_game import SnakeGame
+from textual_snake_game.core.game_engine import GameEngine
+from textual_snake_game.core.models import DIRECTIONS, Snake, Food, GameState
+from textual_snake_game.ui.ui_components import GameScreen, GameBoard, ScoreDisplay
 
 
 class TestGameIntegration(unittest.TestCase):

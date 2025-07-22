@@ -5,13 +5,12 @@ UI components for the Snake Game using Textual framework.
 from textual.app import App
 from textual.screen import Screen
 from textual.widget import Widget
+from textual.widgets import Label
 from textual.containers import Container
 from textual.reactive import reactive
 from textual import events
-from rich.panel import Panel
 from rich.console import RenderableType
 from rich.text import Text
-from rich.segment import Segment
 from rich.style import Style
 from typing import List, Tuple, Optional
 
@@ -59,6 +58,7 @@ class GameBoard(Widget):
             new_state: New game state to display
         """
         self.game_state = new_state
+        self.refresh()
 
     def render(self) -> RenderableType:
         """Render the game board with snake and food.
@@ -67,8 +67,8 @@ class GameBoard(Widget):
             Rich renderable for the game board
         """
         if not self.game_state:
-            # If no game state, render an empty panel
-            return Panel("", title="Snake Game", border_style=self.BORDER_STYLE)
+            # If no game state, render empty text
+            return Text("No game state")
 
         # Get board dimensions
         width = self.game_state.board_width
@@ -90,54 +90,42 @@ class GameBoard(Widget):
         if 0 <= food_x < width and 0 <= food_y < height:
             grid[food_y][food_x] = self.FOOD
 
-        # Create a list of segments for each row
-        rows = []
-
+        # Build the board as a Text object
+        board_text = Text()
+        
+        # Add title
+        title = "SNAKE GAME"
+        if self.game_state.game_over:
+            title += " - GAME OVER!"
+        board_text.append(title.center(width + 2) + "\n", style="bold white")
+        
         # Add top border
-        border_top = (
-            self.BORDER_TOP_LEFT
-            + self.BORDER_HORIZONTAL * width
-            + self.BORDER_TOP_RIGHT
-        )
-        rows.append([Segment(border_top, self.BORDER_STYLE)])
+        board_text.append(self.BORDER_TOP_LEFT, style=self.BORDER_STYLE)
+        board_text.append(self.BORDER_HORIZONTAL * width, style=self.BORDER_STYLE)
+        board_text.append(self.BORDER_TOP_RIGHT + "\n", style=self.BORDER_STYLE)
 
         # Add game board rows with side borders
-        for y, row in enumerate(grid):
-            segments = [Segment(self.BORDER_VERTICAL, self.BORDER_STYLE)]
-
-            for x, cell in enumerate(row):
+        for row in grid:
+            board_text.append(self.BORDER_VERTICAL, style=self.BORDER_STYLE)
+            
+            for cell in row:
                 if cell == self.SNAKE_HEAD:
-                    style = self.SNAKE_HEAD_STYLE
+                    board_text.append(cell, style=self.SNAKE_HEAD_STYLE)
                 elif cell == self.SNAKE_BODY:
-                    style = self.SNAKE_BODY_STYLE
+                    board_text.append(cell, style=self.SNAKE_BODY_STYLE)
                 elif cell == self.FOOD:
-                    style = self.FOOD_STYLE
+                    board_text.append(cell, style=self.FOOD_STYLE)
                 else:
-                    style = None
-
-                segments.append(Segment(cell, style))
-
-            segments.append(Segment(self.BORDER_VERTICAL, self.BORDER_STYLE))
-            rows.append(segments)
+                    board_text.append(cell)
+            
+            board_text.append(self.BORDER_VERTICAL + "\n", style=self.BORDER_STYLE)
 
         # Add bottom border
-        border_bottom = (
-            self.BORDER_BOTTOM_LEFT
-            + self.BORDER_HORIZONTAL * width
-            + self.BORDER_BOTTOM_RIGHT
-        )
-        rows.append([Segment(border_bottom, self.BORDER_STYLE)])
-
-        # Create a panel with the rendered board
-        title = "Snake Game"
-        if self.game_state.game_over:
-            title += " - Game Over!"
-
-        return Panel(
-            [Text.from_segments(segments) for segments in rows],
-            title=title,
-            border_style=self.BORDER_STYLE,
-        )
+        board_text.append(self.BORDER_BOTTOM_LEFT, style=self.BORDER_STYLE)
+        board_text.append(self.BORDER_HORIZONTAL * width, style=self.BORDER_STYLE)
+        board_text.append(self.BORDER_BOTTOM_RIGHT, style=self.BORDER_STYLE)
+        
+        return board_text
 
 
 class ScoreDisplay(Widget):
@@ -163,6 +151,7 @@ class ScoreDisplay(Widget):
             new_score: New score value to display
         """
         self.score = new_score
+        self.refresh()
 
     def render(self) -> RenderableType:
         """Render the score display.
@@ -170,12 +159,9 @@ class ScoreDisplay(Widget):
         Returns:
             Rich renderable for the score display
         """
-        # Create a panel with the score prominently displayed
+        # Create a text with the score prominently displayed
         score_text = Text(f"Score: {self.score}", style="bold white on dark_blue")
-
-        return Panel(
-            score_text, title="Score", border_style="bright_blue", padding=(1, 2)
-        )
+        return score_text
 
 
 class GameScreen(Screen):
@@ -229,6 +215,16 @@ class GameScreen(Screen):
         padding: 1;
         border-top: solid #3d3d3d;
     }
+    
+    #title {
+        text-style: bold;
+        color: white;
+    }
+    
+    #controls {
+        text-opacity: 60%;
+        color: white;
+    }
     """
 
     def __init__(self, game_state: Optional[GameState] = None):
@@ -251,7 +247,7 @@ class GameScreen(Screen):
         with Container(id="game-container"):
             # Header with title
             with Container(id="header"):
-                yield Text("SNAKE GAME", style="bold white")
+                yield Label("SNAKE GAME", id="title")
 
             # Game board takes most of the space
             self.game_board = GameBoard(self.game_state, id="game-board")
@@ -266,9 +262,9 @@ class GameScreen(Screen):
 
             # Footer with controls
             with Container(id="footer"):
-                yield Text(
+                yield Label(
                     "Controls: ↑/↓/←/→ - Move | 1/2/3 - Speed | R - Reset | P - Pause | Q - Quit",
-                    style="dim white",
+                    id="controls",
                 )
 
     def update_game_state(self, new_state: GameState) -> None:

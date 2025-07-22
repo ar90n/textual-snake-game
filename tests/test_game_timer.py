@@ -4,8 +4,8 @@ Unit tests for game timer and update loop.
 
 import unittest
 from unittest.mock import patch, MagicMock, call
-from src.snake_game.snake_game import SnakeGame
-from src.snake_game.core.models import GameState, Snake, Food
+from textual_snake_game.snake_game import SnakeGame
+from textual_snake_game.core.models import GameState, Snake, Food
 
 
 class TestGameTimer(unittest.TestCase):
@@ -74,19 +74,19 @@ class TestGameTimer(unittest.TestCase):
     
     def test_game_timer_setup(self):
         """Test that the game timer is set up correctly."""
-        # Create a new SnakeGame instance with mocked set_interval
+        # Create a new SnakeGame instance with mocked start_game_timer
         app = SnakeGame()
-        app.set_interval = MagicMock(return_value=123)
+        app.start_game_timer = MagicMock()
         
         # Call _setup_game_timer directly
         app._setup_game_timer()
         
-        # Verify that set_interval was called with the correct parameters
-        app.set_interval.assert_called_once()
-        args = app.set_interval.call_args[0]
-        self.assertEqual(len(args), 2)
+        # Verify that start_game_timer was called with the correct interval
+        app.start_game_timer.assert_called_once()
+        args = app.start_game_timer.call_args[0]
+        self.assertEqual(len(args), 1)
         self.assertIsInstance(args[0], float)  # First arg should be a float (interval)
-        self.assertEqual(args[1], app.update_game)  # Second arg should be the update_game method
+        self.assertEqual(args[0], app.GAME_SPEEDS[app.game_speed])  # Should use the game speed interval
     
     def test_game_speed_adjustment(self):
         """Test that the game speed can be adjusted."""
@@ -105,25 +105,18 @@ class TestGameTimer(unittest.TestCase):
         self.app.set_game_speed("invalid")
         self.assertEqual(self.app.game_speed, "slow")  # Should remain unchanged
     
-    @patch('src.snake_game.snake_game.SnakeGame.clear_interval')
-    @patch('src.snake_game.snake_game.SnakeGame.set_interval')
-    def test_timer_reset_on_speed_change(self, mock_set_interval, mock_clear_interval):
+    @patch('textual_snake_game.snake_game.SnakeGame._setup_game_timer')
+    def test_timer_reset_on_speed_change(self, mock_setup_game_timer):
         """Test that the timer is reset when the game speed changes."""
         # Setup
         app = SnakeGame()
-        app.timer_id = 123  # Mock timer ID
+        app.game_timer = MagicMock()  # Mock timer object
         
         # Change speed
         app.set_game_speed("fast")
         
-        # Verify that the old timer was cleared
-        mock_clear_interval.assert_called_once_with(123)
-        
-        # Verify that a new timer was set with the correct interval
-        mock_set_interval.assert_called_once()
-        args = mock_set_interval.call_args[0]
-        self.assertEqual(args[0], app.GAME_SPEEDS["fast"])
-        self.assertEqual(args[1], app.update_game)
+        # Verify that _setup_game_timer was called to reset the timer
+        mock_setup_game_timer.assert_called_once()
     
     def test_key_changes_game_speed(self):
         """Test that pressing number keys changes the game speed."""

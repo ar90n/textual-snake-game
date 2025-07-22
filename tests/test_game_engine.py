@@ -4,8 +4,8 @@ Unit tests for GameEngine class.
 
 import unittest
 from unittest.mock import patch, MagicMock
-from src.snake_game.core.game_engine import GameEngine
-from src.snake_game.core.models import DIRECTIONS, Snake, Food
+from textual_snake_game.core.game_engine import GameEngine
+from textual_snake_game.core.models import DIRECTIONS, Snake, Food
 
 
 class TestGameEngine(unittest.TestCase):

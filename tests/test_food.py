@@ -4,7 +4,7 @@ Unit tests for Food data model.
 
 import unittest
 from unittest.mock import patch
-from src.snake_game.core.models import Food, Snake
+from textual_snake_game.core.models import Food, Snake
 
 
 class TestFood(unittest.TestCase):

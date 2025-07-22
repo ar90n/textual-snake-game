@@ -5,8 +5,8 @@ Unit tests for keyboard input handling.
 import unittest
 from unittest.mock import patch, MagicMock
 from textual import events
-from src.snake_game.snake_game import SnakeGame
-from src.snake_game.core.models import DIRECTIONS
+from textual_snake_game.snake_game import SnakeGame
+from textual_snake_game.core.models import DIRECTIONS
 
 
 class TestInputHandling(unittest.TestCase):

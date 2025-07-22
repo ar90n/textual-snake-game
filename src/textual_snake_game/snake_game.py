@@ -5,8 +5,7 @@ This module contains the main SnakeGame application class that integrates all co
 and manages the application lifecycle.
 """
 
-import asyncio
-from typing import Dict, Optional, Callable
+from typing import Dict, Optional
 
 # Import Textual components
 from textual.app import App
@@ -64,8 +63,7 @@ class SnakeGame(App):
         self.paused = False
         self.last_direction: Optional[str] = None
         self.game_speed = "normal"
-        self.timer_id = None
-        self._intervals = {}  # Store active intervals
+        self.game_timer = None  # Store the game timer
         
     def on_mount(self) -> None:
         """Initialize the game when the app is mounted."""
@@ -90,59 +88,45 @@ class SnakeGame(App):
         # Schedule the game initialization to happen after the screen is fully mounted
         self.call_after_refresh(self.initialize_game)
     
-    def set_interval(self, interval: float, callback: Callable) -> int:
-        """Set up a periodic timer that calls a callback function.
+    def start_game_timer(self, interval: float) -> None:
+        """Start the game timer with the specified interval.
         
         Args:
-            interval: Time in seconds between calls
-            callback: Function to call at each interval
-            
-        Returns:
-            Timer ID that can be used to clear the interval
+            interval: Time in seconds between game updates
         """
-        # Generate a unique ID for this timer
-        timer_id = max(self._intervals.keys(), default=0) + 1
+        # Stop existing timer if any
+        if self.game_timer:
+            self.game_timer.stop()
         
-        # Create and store the timer task
-        async def interval_task():
-            while True:
-                # Wait for the specified interval
-                await asyncio.sleep(interval)
-                # Call the callback if the timer is still active
-                if timer_id in self._intervals:
-                    callback()
+        # Create a repeating timer
+        def repeating_update():
+            self.update_game()
+            # Reschedule the timer if game is still running
+            if not self.game_engine.is_game_over() and not self.paused:
+                self.game_timer = self.set_timer(interval, repeating_update, pause=False)
         
-        # Start the timer task and store it
-        task = asyncio.create_task(interval_task())
-        self._intervals[timer_id] = task
-        
-        return timer_id
+        # Start the timer
+        self.game_timer = self.set_timer(interval, repeating_update, pause=False)
     
-    def clear_interval(self, timer_id: int) -> None:
-        """Clear a previously set interval timer.
-        
-        Args:
-            timer_id: ID of the timer to clear
-        """
-        if timer_id in self._intervals:
-            # Cancel the task and remove it from active intervals
-            self._intervals[timer_id].cancel()
-            del self._intervals[timer_id]
+    def stop_game_timer(self) -> None:
+        """Stop the game timer."""
+        if not self.game_timer:
+            return
+            
+        self.game_timer.stop()
+        self.game_timer = None
     
     def _setup_game_timer(self) -> None:
         """Set up the game timer with the current speed setting.
         
         This method creates a periodic timer that calls update_game at regular intervals
-        based on the current game speed setting. If a timer already exists, it is cleared
+        based on the current game speed setting. If a timer already exists, it is stopped
         before creating a new one.
         """
-        # Clear existing timer if any
-        if self.timer_id is not None:
-            self.clear_interval(self.timer_id)
-            
-        # Create new timer with current speed
+        # Get the interval for current speed
         interval = self.GAME_SPEEDS[self.game_speed]
-        self.timer_id = self.set_interval(interval, self.update_game)
+        # Start the game timer
+        self.start_game_timer(interval)
     
     def set_game_speed(self, speed: str) -> bool:
         """Set the game speed.
@@ -158,8 +142,8 @@ class SnakeGame(App):
             
         self.game_speed = speed
         
-        # Update the timer with new speed
-        if hasattr(self, "timer_id") and self.timer_id is not None:
+        # Update the timer with new speed if it exists
+        if self.game_timer:
             self._setup_game_timer()
             
         return True
@@ -187,14 +171,12 @@ class SnakeGame(App):
             # Store the last valid direction
             if result:
                 self.last_direction = direction
+            return
         
         # Speed control keys
-        elif key == "1":
-            self.set_game_speed("slow")
-        elif key == "2":
-            self.set_game_speed("normal")
-        elif key == "3":
-            self.set_game_speed("fast")
+        speed_keys = {"1": "slow", "2": "normal", "3": "fast"}
+        if key in speed_keys:
+            self.set_game_speed(speed_keys[key])
     
     def update_game(self) -> None:
         """Update game state on timer tick.
@@ -207,20 +189,19 @@ class SnakeGame(App):
         
         The update is skipped if the game is paused or already over.
         """
-        if self.game_engine and not self.paused and not self.game_engine.is_game_over():
-            # Update game state
-            game_continues = self.game_engine.update()
+        if not self.game_engine or self.paused or self.game_engine.is_game_over():
+            return
             
-            # Update UI with new state
-            if self.game_screen:
-                self.game_screen.update_game_state(self.game_engine.get_state())
-                
-            # If game just ended, handle game over state
-            if not game_continues:
-                self.game_engine.end_game()
-                # Final UI update to show game over state
-                if self.game_screen:
-                    self.game_screen.update_game_state(self.game_engine.get_state())
+        # Update game state
+        game_continues = self.game_engine.update()
+        
+        # If game just ended, handle game over state
+        if not game_continues:
+            self.game_engine.end_game()
+            
+        # Update UI with new state (handles both normal and game-over states)
+        if self.game_screen:
+            self.game_screen.update_game_state(self.game_engine.get_state())
     
     def start_new_game(self) -> None:
         """Start a new game with initial settings.
@@ -346,6 +327,5 @@ class SnakeGame(App):
     
     def on_unmount(self) -> None:
         """Clean up resources when the app is unmounted."""
-        # Clear all active intervals
-        for timer_id in list(self._intervals.keys()):
-            self.clear_interval(timer_id)
+        # Stop the game timer
+        self.stop_game_timer()

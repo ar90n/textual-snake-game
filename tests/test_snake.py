@@ -3,7 +3,7 @@ Unit tests for Snake data model.
 """
 
 import unittest
-from src.snake_game.core.models import Snake, DIRECTIONS
+from textual_snake_game.core.models import Snake, DIRECTIONS
 
 
 class TestSnake(unittest.TestCase):
