@@ -1,0 +1,20 @@
+[project]
+name = "textual-snake-game"
+version = "0.1.0"
+description = "A simple terminal-based Snake Game using Textual framework"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "textual>=4.0.0",
+]
+
+[project.scripts]
+textual-snake-game = "textual_snake_game.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["textual_snake_game", "textual_snake_game.core", "textual_snake_game.ui"]
